@@ -9,6 +9,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='2' y='1' width='3' height='14' rx='1.5' fill='%23e5484d'/><rect x='6.5' y='4' width='3' height='9' rx='1.5' fill='%233e63dd'/><rect x='11' y='2' width='3' height='6' rx='1.5' fill='%2330a46c'/></svg>">
 <link rel="stylesheet" href="style.css">
 <script>
+  // 本番は Firebase Hosting（スマホの Safari でもログインできるよう、アプリとログイン処理を同じドメインに置く）。
+  // 古い GitHub Pages の URL で開かれたら移す（#k=… の招待リンクも引き継ぐ）
+  if (location.hostname === 'pealsh.github.io') location.replace(`https://team-schedule-5afa8a.web.app/${location.search}${location.hash}`);
   // 描画前にテーマを決めてちらつきを防ぐ
   try { const t = localStorage.getItem('ts-theme'); if (t) document.documentElement.dataset.theme = JSON.parse(t); } catch {}
   { const r = document.documentElement, t = r.dataset.theme;

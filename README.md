@@ -3,7 +3,7 @@
 チーム全員の予定を 1 日ずつ縦（0:00〜24:00）に並べ、**全員が空いている時間を緑で強調**するツール。
 画面・REST API・MCP（AI）のどれからでも予定を入れられる。
 
-- 画面：GitHub Pages（HTML/CSS/JS のみ、ビルド不要、約 41KB）
+- 画面：Firebase Hosting（HTML/CSS/JS のみ、ビルド不要、約 46KB）
 - ログイン：Google アカウント（Firebase Authentication）。許可リストに載った Gmail だけが使える
 - データ：Firebase Cloud Firestore（無料の Spark プラン）
 - AI 連携 / REST API：Cloudflare Worker（`worker/`、無料枠）。claude.ai・スマホ・Claude Code から URL だけでつながる
@@ -15,7 +15,7 @@
 1. https://console.firebase.google.com でプロジェクトを作成（Google アナリティクスは不要）
 2. **Firestore Database** を作成（ロケーション `asia-northeast1`、本番モード）
 3. **プロジェクトの設定 → マイアプリ** で Web アプリを追加し、`projectId` と `apiKey` を `config.js` に書く
-4. **Authentication → Sign-in method** で **Google** を有効にする。**設定 → 承認済みドメイン** に `<ユーザー名>.github.io` を追加
+4. **Authentication → Sign-in method** で **Google** を有効にする（`<projectId>.web.app` は最初から承認済みドメインに入っている）
 5. チームキーを決める（例：`openssl rand -hex 16`）。チームキーは秘密ではなく、ただのチーム ID
 6. Firestore のコンソールで **コレクション `teams` → ドキュメント ID にチームキー** を作り、次のフィールドを入れる
    - `name`（string）：チーム名
@@ -28,14 +28,19 @@
 - **招待リンクを作る**：リンクを開いて Google でログインした人が、自動で許可リストに入る（7 日間有効・何人でも・一覧から無効化できる）
 - **アクセスを許可する Gmail**：メールアドレスを直接追加する
 
-## 2. GitHub Pages で公開
+## 2. Firebase Hosting で公開
 
-1. GitHub にリポジトリを作り、このフォルダを push
-2. **Settings → Pages → Build and deployment** で `Deploy from a branch` / `main` / `/ (root)`
-3. メンバーには次の形式のリンクを共有（初回だけキーが保存される）。開くと Google ログインを求められる
+```sh
+npx firebase-tools deploy --only hosting --project <projectId>   # → https://<projectId>.web.app
+```
+
+GitHub Pages ではなく Firebase Hosting を使う理由：アプリとログイン処理（`/__/auth/handler`）を同じドメインに置かないと、iPhone の Safari がブラウザの保存領域を分けてしまい、ログインが「missing initial state」で失敗するため。
+古い GitHub Pages の URL で開かれたときは、`index.html` が web.app へ移す。
+
+メンバーには次の形式のリンク（または画面で作る招待リンク）を共有する。開くと Google ログインを求められる。
 
 ```
-https://<ユーザー名>.github.io/<リポジトリ名>/#k=<チームキー>
+https://<projectId>.web.app/#k=<チームキー>
 ```
 
 ## 3. AI・API 用の Worker を公開（約 10 分）
@@ -51,7 +56,7 @@ npx wrangler secret put GOOGLE_SA < /保存した場所/鍵.json
 npx wrangler deploy          # → https://team-schedule.<アカウント>.workers.dev
 ```
 
-4. 表示された URL を `config.js` の `WORKER_URL` に書いて、GitHub に push
+4. 表示された URL を `config.js` の `WORKER_URL` に書いて、Hosting に deploy
 
 `worker/wrangler.toml` の `FIREBASE_PROJECT_ID` は自分の projectId に変える。
 
