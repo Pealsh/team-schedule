@@ -1,0 +1,14 @@
+{
+  "name": "team-schedule",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "serve": "npx --yes serve .",
+    "test:rules": "npx --yes firebase-tools emulators:exec --only firestore --project demo-ts \"node --test test/rules/*.test.js\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.3.0"
+  }
+}

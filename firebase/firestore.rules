@@ -1,0 +1,100 @@
+rules_version = '2';
+// 読み書きできるのは、teams/{チームキー}.allowed に載った Google アカウント（メール確認済み）だけ。
+// チーム文書はコンソールで作る（owner と allowed を入れる）。allowed を変えられるのは owner だけ。
+// tokens/{ハッシュ} は MCP / REST 用の接続トークン。作れるのは本人だけで、Worker はサービスアカウントで読む。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    // 自動 ID と同じ文字だけ許す（画面の HTML 属性に入るため）
+    function safeId(id) {
+      return id.matches('^[A-Za-z0-9_-]{1,128}$');
+    }
+
+    function allowedIn(team) {
+      return signedIn()
+        && get(/databases/$(database)/documents/teams/$(team)).data.allowed.hasAny([request.auth.token.email]);
+    }
+
+    function isOwner(team) {
+      return signedIn() && get(/databases/$(database)/documents/teams/$(team)).data.owner == request.auth.token.email;
+    }
+
+    // 招待リンクで参加：allowed に自分のメールだけを足す。invite は「コード:自分のメール」
+    // （前の人の invite が残っていても、自分のメールで書き直さないと通らないので、コードを知らない人は流用できない）
+    function joinsByInvite(team) {
+      let email = request.auth.token.email;
+      let parts = request.resource.data.invite.split(':');
+      let path = /databases/$(database)/documents/teams/$(team)/invites/$(parts[0]);
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['allowed', 'invite'])
+        && parts.size() == 2 && parts[1] == email && parts[0].matches('^[A-Za-z0-9]{32}$')
+        && exists(path) && get(path).data.expires_at > request.time
+        && request.resource.data.allowed.hasAny([email])
+        && request.resource.data.allowed.removeAll([email]) == resource.data.allowed.removeAll([email]);
+    }
+
+    match /teams/{team} {
+      allow get: if allowedIn(team);
+      allow update: if (signedIn()
+        && request.auth.token.email == resource.data.owner
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['allowed'])
+        && request.resource.data.allowed is list
+        && request.resource.data.allowed.hasAny([resource.data.owner]))
+        || joinsByInvite(team);
+
+      match /invites/{code} {
+        allow get, list, delete: if isOwner(team);
+        allow create: if isOwner(team) && code.matches('^[A-Za-z0-9]{32}$')
+          && request.resource.data.keys().hasOnly(['created_at', 'expires_at'])
+          && request.resource.data.expires_at is timestamp
+          && request.resource.data.expires_at <= request.time + duration.value(8, 'd');
+      }
+
+      // email はログインで自動作成されたメンバーだけが持つ（本人のメールのみ・変更不可）。
+      // 名前を変えられるのは本人・オーナー・メール無しのメンバー。色は誰でも変えられる
+      match /members/{id} {
+        function validMember() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['name', 'color', 'created_at', 'email'])
+            && d.name is string && d.name.size() > 0 && d.name.size() <= 30
+            && d.color.matches('^#[0-9a-fA-F]{6}$');
+        }
+        allow read, delete: if allowedIn(team);
+        allow create: if allowedIn(team) && safeId(id) && validMember()
+          && request.resource.data.get('email', request.auth.token.email) == request.auth.token.email;
+        allow update: if allowedIn(team) && validMember()
+          && request.resource.data.get('email', '') == resource.data.get('email', '')
+          && (request.resource.data.name == resource.data.name
+            || resource.data.get('email', '') in ['', request.auth.token.email]
+            || isOwner(team));
+      }
+
+      match /events/{id} {
+        allow read, delete: if allowedIn(team);
+        allow create: if allowedIn(team) && safeId(id)
+          && request.resource.data.keys().hasOnly(['member_id', 'title', 'starts_at', 'ends_at', 'created_at'])
+          && request.resource.data.member_id is string && safeId(request.resource.data.member_id)
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 80
+          && request.resource.data.starts_at is timestamp
+          && request.resource.data.ends_at is timestamp
+          && request.resource.data.ends_at > request.resource.data.starts_at;
+      }
+    }
+
+    match /tokens/{hash} {
+      allow get, list, delete: if signedIn() && resource.data.email == request.auth.token.email;
+      allow create: if signedIn() && hash.matches('^[0-9a-f]{64}$')
+        && request.resource.data.keys().hasOnly(['team', 'email', 'label', 'created_at'])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.team is string
+        && request.resource.data.label is string
+        && request.resource.data.label.size() > 0 && request.resource.data.label.size() <= 40
+        && request.resource.data.created_at is timestamp
+        && allowedIn(request.resource.data.team);
+    }
+  }
+}

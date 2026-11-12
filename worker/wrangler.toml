@@ -1,0 +1,8 @@
+name = "team-schedule"
+main = "index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+FIREBASE_PROJECT_ID = "team-schedule-5afa8a"
+
+# サービスアカウント JSON は secret で渡す：npx wrangler secret put GOOGLE_SA < 鍵.json

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>チーム予定</title>
+<meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141415" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='2' y='1' width='3' height='14' rx='1.5' fill='%23e5484d'/><rect x='6.5' y='4' width='3' height='9' rx='1.5' fill='%233e63dd'/><rect x='11' y='2' width='3' height='6' rx='1.5' fill='%2330a46c'/></svg>">
+<link rel="stylesheet" href="style.css">
+<script>
+  // 描画前にテーマを決めてちらつきを防ぐ
+  try { const t = localStorage.getItem('ts-theme'); if (t) document.documentElement.dataset.theme = JSON.parse(t); } catch {}
+  { const r = document.documentElement, t = r.dataset.theme;
+    r.toggleAttribute('data-dark', t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches); }
+</script>
+</head>
+<body data-view="gate">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+</svg>
+
+<section id="gate" class="gate">
+  <svg class="mark" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="1" width="3" height="14" rx="1.5" fill="#e5484d"/><rect x="6.5" y="4" width="3" height="9" rx="1.5" fill="#3e63dd"/><rect x="11" y="2" width="3" height="6" rx="1.5" fill="#2f7d4f"/></svg>
+  <h1>チーム予定</h1>
+  <p id="gateMsg" class="meta">読み込み中…</p>
+  <p class="err" hidden></p>
+  <div class="gate-actions">
+    <button id="loginBtn" class="primary" hidden>Google でログイン</button>
+    <button id="retryBtn" class="primary" hidden>もう一度試す</button>
+    <button id="rekeyBtn" class="ghost" hidden>チームキーを入れ直す</button>
+    <button id="gateOut" class="ghost" hidden>ログアウト</button>
+  </div>
+</section>
+
+<header class="bar">
+  <div class="nav">
+    <button id="prev" class="icon" aria-label="前の日"><svg class="i"><use href="#i-left"/></svg></button>
+    <label class="date"><span id="dateLabel"></span><input type="date" id="date" aria-label="日付"></label>
+    <button id="next" class="icon" aria-label="次の日"><svg class="i"><use href="#i-right"/></svg></button>
+    <button id="today" class="ghost">今日</button>
+    <div class="seg" role="group" aria-label="表示の切り替え">
+      <button id="viewDay" aria-pressed="true">日</button><button id="viewMonth" aria-pressed="false">月</button><button id="viewFree" aria-pressed="false">空き</button>
+    </div>
+  </div>
+  <div class="actions">
+    <button id="themeBtn" class="icon theme" aria-label="ライト／ダーク切替">
+      <svg class="i sun"><use href="#i-sun"/></svg><svg class="i moon"><use href="#i-moon"/></svg>
+    </button>
+    <button id="acctBtn" class="icon acct" aria-label="アカウント" popovertarget="acctMenu" hidden></button>
+    <button id="addBtn" class="primary"><svg class="i"><use href="#i-plus"/></svg>予定</button>
+  </div>
+</header>
+<div id="acctMenu" class="menu" popover>
+  <p id="acctEmail" class="meta"></p>
+  <button id="renameBtn" class="ghost"><svg class="i"><use href="#i-pen"/></svg>名前を変更</button>
+  <button id="connectBtn" class="ghost"><svg class="i"><use href="#i-plug"/></svg>AI・API と接続</button>
+  <button id="logoutBtn" class="ghost"><svg class="i"><use href="#i-out"/></svg>ログアウト</button>
+</div>
+
+<section class="sub">
+  <div id="legend" class="legend"></div>
+  <div class="free">
+    <span>全員の空き</span>
+    <select id="minFree" aria-label="最小の空き時間">
+      <option value="0">すべて</option>
+      <option value="30" selected>30分以上</option>
+      <option value="60">1時間以上</option>
+      <option value="120">2時間以上</option>
+    </select>
+    <span id="freeList" class="free-list"></span>
+  </div>
+  <p id="notice" class="notice" hidden></p>
+</section>
+
+<main id="scroller" class="scroller">
+  <div id="heads" class="heads"></div>
+  <div id="grid" class="grid">
+    <div id="hours" class="hours"></div>
+    <div id="body" class="body"></div>
+  </div>
+</main>
+
+<main id="month" class="month" hidden></main>
+<main id="freeView" class="freeview" hidden></main>
+
+<dialog id="eventDlg">
+  <form method="dialog" id="eventForm">
+    <h2>予定を追加</h2>
+    <label>メンバー<select name="member_id" required></select></label>
+    <label>タイトル<input name="title" required maxlength="80" placeholder="例：定例"></label>
+    <label>日付<input type="date" name="date" required></label>
+    <div class="row">
+      <label>開始<input type="time" name="start" step="900" required></label>
+      <label>終了<input type="time" name="end" step="900" required></label>
+    </div>
+    <p class="err" hidden></p>
+    <menu><button value="cancel" formnovalidate class="ghost">キャンセル</button><button value="ok" class="primary">追加</button></menu>
+  </form>
+</dialog>
+
+<dialog id="detailDlg">
+  <form method="dialog">
+    <h2 id="detailTitle"></h2>
+    <p id="detailMeta" class="meta"></p>
+    <menu><button value="delete" class="danger">削除</button><button value="close" class="primary">閉じる</button></menu>
+  </form>
+</dialog>
+
+<dialog id="memberDlg">
+  <form method="dialog" id="memberForm">
+    <h2>メンバー</h2>
+    <ul id="memberList" class="member-list"></ul>
+    <div class="row add-member">
+      <input name="name" placeholder="名前" maxlength="30" aria-label="追加するメンバーの名前">
+      <button value="add" class="primary">追加</button>
+    </div>
+    <menu><button value="close" formnovalidate class="ghost">閉じる</button></menu>
+  </form>
+</dialog>
+
+<dialog id="keyDlg">
+  <form method="dialog" id="keyForm">
+    <h2>チームキー</h2>
+    <p class="meta">共有されたチームキーを入力してください</p>
+    <input name="key" required autocomplete="off">
+    <p class="err" hidden></p>
+    <menu><button type="button" id="keyOut" class="ghost">ログアウト</button><button value="ok" class="primary">開く</button></menu>
+  </form>
+</dialog>
+
+<dialog id="connectDlg" class="wide">
+  <form method="dialog" id="connectForm">
+    <h2>AI・API と接続</h2>
+    <p class="meta">接続 URL を claude.ai の「設定 → コネクタ → カスタムコネクタを追加」に貼ると、どこからでも AI が予定を読み書きできます。</p>
+    <div class="row add-member">
+      <input name="label" maxlength="40" placeholder="名前（例：claude.ai）" aria-label="接続の名前">
+      <button value="issue" class="primary">URL を発行</button>
+    </div>
+    <div id="issued" class="issued" hidden>
+      <p class="warn">この URL は今だけ表示されます。URL を知っている人は誰でも予定を読み書きできるので、人に渡さないでください。</p>
+      <label>MCP URL<span class="copy"><input id="mcpOut" readonly><button type="button" data-copy="mcpOut">コピー</button></span></label>
+      <label>Claude Code<span class="copy"><input id="ccOut" readonly><button type="button" data-copy="ccOut">コピー</button></span></label>
+      <label>REST API<span class="copy"><input id="curlOut" readonly><button type="button" data-copy="curlOut">コピー</button></span></label>
+    </div>
+    <p class="err" hidden></p>
+    <h3>発行済み</h3>
+    <ul id="tokenList" class="member-list"></ul>
+    <div id="ownerBox" hidden>
+      <h3>招待リンク</h3>
+      <p class="meta">リンクを開いて Google でログインした人は、自動でこのチームに入れます（7 日間有効・何人でも）。</p>
+      <div><button value="invite">招待リンクを作る</button></div>
+      <span id="inviteOut" class="copy" hidden><input id="inviteUrl" readonly aria-label="招待リンク"><button type="button" data-copy="inviteUrl">コピー</button><button type="button" id="shareBtn" hidden>共有</button></span>
+      <ul id="inviteList" class="member-list"></ul>
+      <h3>アクセスを許可する Gmail</h3>
+      <label>1 行に 1 つ<textarea name="allowed" rows="4" spellcheck="false"></textarea></label>
+      <div class="end"><button value="allow">保存</button></div>
+    </div>
+    <menu><button value="close" formnovalidate class="ghost">閉じる</button></menu>
+  </form>
+</dialog>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
