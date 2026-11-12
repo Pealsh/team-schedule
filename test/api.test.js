@@ -266,3 +266,10 @@ test('joinWithInvite: commit で invite を「コード:メール」にし、all
     currentDocument: { exists: true },
   }]);
 });
+
+test('event: 1 件取得、無ければ null', async () => {
+  const f = mockFetch((c) => (c.url.includes('/events/e1') ? [200, doc('teams/team-abc/events/e1', { member_id: { stringValue: 'a' } })] : [404, { error: {} }]));
+  assert.equal((await api(f).event('e1')).member_id, 'a');
+  assert.equal(await api(f).event('e2'), null);
+  await assert.rejects(api(f).event('../x'), /id/);
+});

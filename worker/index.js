@@ -21,14 +21,14 @@ const json = (status, body, headers = {}) => new Response(JSON.stringify(body), 
   status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers },
 });
 const isUpstream = (e) => e.status !== undefined || e instanceof TypeError;
-const defaultTools = (api) => createTools(withFixedOffset(api, JST), { now: fixedNow(JST) });
+// self: トークン発行者のメール。AI からの書き込みはその人の予定だけに限る
+const defaultTools = (api, self) => createTools(withFixedOffset(api, JST), { now: fixedNow(JST), self });
 
 // REST のパスとクエリ → [ツール名, 引数]。本文が要るものは body を使う
 function route(method, path, q, body) {
   const num = (v) => (v === null || v === '' ? undefined : Number(v));
   const pick = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== ''));
   if (path === '/api/members' && method === 'GET') return ['list_members', {}];
-  if (path === '/api/members' && method === 'POST') return ['add_member', body];
   if (path === '/api/events' && method === 'GET') {
     return ['list_events', pick({ date: q.get('date'), days: num(q.get('days')), member: q.get('member') })];
   }
@@ -69,7 +69,7 @@ export function createHandler({ fetch = globalThis.fetch, tokenSource, makeTools
     const team = await fsGet(base, `teams/${encodeURIComponent(t.team)}`);
     const email = t.email.toLowerCase();
     if (!team?.allowed?.some((a) => a.toLowerCase() === email)) return null;
-    return makeTools(createApi({ projectId, apiKey: '', teamKey: t.team, getAuthHeader, fetch }));
+    return makeTools(createApi({ projectId, apiKey: '', teamKey: t.team, getAuthHeader, fetch }), email);
   }
 
   async function rest(request, url, path, env) {

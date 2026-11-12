@@ -85,3 +85,43 @@ test('now を渡すと「今日」がそれに従う', async () => {
   const t = createTools(fakeApi(), { now: () => new Date(2026, 0, 5, 12) });
   assert.match(await t.list_events({}), /^2026-01-05（月）/);
 });
+
+// ---------- self（AI 接続）：自分の予定だけ書ける ----------
+function selfApi() {
+  const api = fakeApi();
+  api.db.members[0].email = 'sato@x.com';
+  api.event = async (id) => api.db.events.find((e) => e.id === id) ?? null;
+  return api;
+}
+
+test('self: member を省略すると自分の予定として追加', async () => {
+  const api = selfApi();
+  await createTools(api, { self: 'sato@x.com' }).add_event({ title: '定例', date: '2026-11-12', start: '10:00', end: '11:00' });
+  assert.equal(api.db.events[0].member_id, 'a');
+});
+
+test('self: 自分の名前の指定は OK、他人の名前は拒否', async () => {
+  const api = selfApi();
+  const t = createTools(api, { self: 'sato@x.com' });
+  await t.add_event({ member: '佐藤', title: 'x', date: '2026-11-12', start: '10:00', end: '11:00' });
+  await assert.rejects(t.add_event({ member: '鈴木', title: 'y', date: '2026-11-12', start: '10:00', end: '11:00' }), /自分の予定しか/);
+  assert.equal(api.db.events.length, 1);
+});
+
+test('self: 他人の予定は削除できない、自分のは削除できる', async () => {
+  const api = selfApi();
+  api.db.events.push({ id: 'mine', member_id: 'a' }, { id: 'theirs', member_id: 'b' });
+  const t = createTools(api, { self: 'sato@x.com' });
+  await assert.rejects(t.delete_event({ id: 'theirs' }), /自分の予定しか/);
+  await t.delete_event({ id: 'mine' });
+  assert.deepEqual(api.db.events.map((e) => e.id), ['theirs']);
+});
+
+test('self: 自分のメンバーが無ければ、先にログインするよう伝える', async () => {
+  const t = createTools(selfApi(), { self: 'new@x.com' });
+  await assert.rejects(t.add_event({ title: 'x', date: '2026-11-12', start: '10:00', end: '11:00' }), /ログイン/);
+});
+
+test('self なし（従来）は member 必須', async () => {
+  await assert.rejects(createTools(fakeApi()).add_event({ title: 'x', date: '2026-11-12', start: '10:00', end: '11:00' }), /member/);
+});

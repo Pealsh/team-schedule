@@ -15,8 +15,16 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 const label = (d) => `${toDateStr(d)}（${WEEK[d.getDay()]}）`;
 
 // now: 「今」を返す関数。Worker では fixedNow(540) を渡して日本時間にする
-export function createTools(api, { now = () => new Date() } = {}) {
+// self: AI 接続のトークン発行者のメール。指定すると、予定の追加・削除はその人のメンバーだけに限る
+export function createTools(api, { now = () => new Date(), self } = {}) {
   const today = () => toDateStr(now());
+  const ONLY_SELF = '自分の予定しか追加・削除できません（AI 接続は、URL を発行した本人の予定だけを書き換えられます）';
+
+  async function selfMember() {
+    const m = (await api.members()).find((x) => x.email === self);
+    if (!m) throw new Error('あなたのメンバーがまだありません。先に画面に Google でログインしてください');
+    return m;
+  }
 
   async function findMember(name) {
     const all = await api.members();
@@ -60,7 +68,14 @@ export function createTools(api, { now = () => new Date() } = {}) {
     },
 
     async add_event({ member, title, date, start, end }) {
-      const m = await findMember(member);
+      let m;
+      if (self) {
+        m = await selfMember();
+        if (member && (await findMember(member)).id !== m.id) throw new Error(ONLY_SELF);
+      } else {
+        if (!member) throw new Error('member（メンバー名）を指定してください');
+        m = await findMember(member);
+      }
       const day = dayStartOf(date);
       const s = toMin(start);
       let e = toMin(end);
@@ -73,6 +88,11 @@ export function createTools(api, { now = () => new Date() } = {}) {
     },
 
     async delete_event({ id }) {
+      if (self) {
+        const [me, ev] = await Promise.all([selfMember(), api.event(id)]);
+        if (!ev) throw new Error(`予定 ${id} が見つかりません`);
+        if (ev.member_id !== me.id) throw new Error(ONLY_SELF);
+      }
       await api.deleteEvent(id);
       return `予定 ${id} を削除しました`;
     },

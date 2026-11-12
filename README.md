@@ -67,13 +67,15 @@ npx wrangler deploy          # → https://team-schedule.<アカウント>.worke
 
 | ツール | 内容 |
 |---|---|
-| `list_members` / `add_member` | メンバー一覧・追加 |
-| `list_events` | 予定一覧（日付・日数・メンバーで絞り込み） |
-| `add_event` | 予定追加（メンバーは名前で指定） |
-| `delete_event` | 予定削除 |
+| `list_members` | メンバー一覧 |
+| `list_events` | 予定一覧（日付・日数・メンバーで絞り込み）。全員分を読める |
+| `add_event` | **自分の**予定を追加（URL を発行した本人のメンバーに入る） |
+| `delete_event` | **自分の**予定を削除 |
 | `find_free_slots` | 指定メンバー全員の空き時間（時間帯・最小分数・複数日） |
 
-話しかけ方の例：「明日 佐藤さんと鈴木さんが 9〜18 時で 1 時間空いてるのはいつ？」「来週月曜 14 時から 1 時間、高橋さんに『レビュー』を入れて」
+話しかけ方の例：「明日 佐藤さんと鈴木さんが 9〜18 時で 1 時間空いてるのはいつ？」「来週月曜 14 時から 1 時間、私に『レビュー』を入れて」
+
+AI から書き込めるのは、URL を発行した本人の予定だけ（他の人の予定の追加・削除、メンバーの追加はできない）。
 
 時刻は日本時間（Asia/Tokyo）で扱う。URL が漏れたら、同じ画面の **発行済み → 無効化** ですぐ止められる。
 
@@ -89,8 +91,7 @@ curl -H "Authorization: Bearer $T" $W/api/members
 curl -H "Authorization: Bearer $T" "$W/api/events?date=2026-11-13&days=7&member=佐藤"
 curl -H "Authorization: Bearer $T" "$W/api/free?date=2026-11-13&members=佐藤,鈴木&min=60&from=09:00&to=18:00"
 curl -H "Authorization: Bearer $T" -H "Content-Type: application/json" -X POST $W/api/events \
-  -d '{"member":"佐藤","title":"定例","date":"2026-11-13","start":"10:00","end":"11:00"}'
-curl -H "Authorization: Bearer $T" -H "Content-Type: application/json" -X POST $W/api/members -d '{"name":"高橋"}'
+  -d '{"title":"定例","date":"2026-11-13","start":"10:00","end":"11:00"}'   # 自分の予定として入る
 curl -H "Authorization: Bearer $T" -X DELETE $W/api/events/<予定ID>
 ```
 

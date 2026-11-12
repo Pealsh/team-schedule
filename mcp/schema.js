@@ -1,4 +1,5 @@
 // MCP ツールの定義（説明と JSON Schema）と、最小限の入力チェック。Worker の MCP と REST で共用。
+// メンバー追加は AI に出さない（メンバーは画面へのログインで自動で作られる）
 
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'YYYY-MM-DD' };
 const time = { type: 'string', pattern: '^\\d{1,2}:\\d{2}$', description: 'HH:MM（24:00 可）' };
@@ -8,30 +9,22 @@ const obj = (properties, required = []) => ({ type: 'object', properties, requir
 export const TOOL_DEFS = [
   { name: 'list_members', description: 'チームメンバーの一覧', inputSchema: obj({}) },
   {
-    name: 'add_member',
-    description: 'メンバーを追加する（色は省略で自動）',
-    inputSchema: obj({
-      name: { type: 'string', minLength: 1, maxLength: 30 },
-      color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
-    }, ['name']),
-  },
-  {
     name: 'list_events',
     description: '予定の一覧（日付省略で今日）。削除に使う id も返す',
     inputSchema: obj({ date, days, member: { type: 'string', description: 'メンバー名で絞り込み' } }),
   },
   {
     name: 'add_event',
-    description: 'メンバーの予定を追加する。終了が開始以前なら翌日扱い',
+    description: '自分の予定を追加する。終了が開始以前なら翌日扱い',
     inputSchema: obj({
-      member: { type: 'string', description: 'メンバー名' },
+      member: { type: 'string', description: 'メンバー名。省略すると自分（AI 接続では自分の予定しか追加できない）' },
       title: { type: 'string', minLength: 1, maxLength: 80 },
       date, start: time, end: time,
-    }, ['member', 'title', 'date', 'start', 'end']),
+    }, ['title', 'date', 'start', 'end']),
   },
   {
     name: 'delete_event',
-    description: '予定を削除する（id は list_events で確認）',
+    description: '自分の予定を削除する（id は list_events で確認）',
     inputSchema: obj({ id: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,128}$', description: '予定の id' } }, ['id']),
   },
   {

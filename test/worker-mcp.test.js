@@ -26,9 +26,9 @@ test('ping は空の結果', async () => {
   assert.deepEqual((await handleMcp(rpc('ping'), tools)).json, { jsonrpc: '2.0', id: 1, result: {} });
 });
 
-test('tools/list は 6 ツール', async () => {
+test('tools/list は 5 ツール', async () => {
   const r = await handleMcp(rpc('tools/list'), tools);
-  assert.equal(r.json.result.tools.length, 6);
+  assert.equal(r.json.result.tools.length, 5);
   assert.ok(r.json.result.tools.every((t) => t.name && t.inputSchema));
 });
 

@@ -48,7 +48,7 @@ test('POST /mcp/<正しいトークン> で tools/list', async () => {
   const r = await call('/mcp/ts_good', mcp('tools/list'));
   assert.equal(r.status, 200);
   assert.match(r.headers.get('Content-Type'), /application\/json/);
-  assert.equal((await r.json()).result.tools.length, 6);
+  assert.equal((await r.json()).result.tools.length, 5);
 });
 
 test('末尾スラッシュ付きの MCP URL も通る', async () => {
@@ -106,13 +106,13 @@ test('GET /api/events のクエリをツール引数に変換する', async () =
   assert.deepEqual(toolCalls, [['list_events', { date: '2026-11-13', member: '佐藤' }]]);
 });
 
-test('POST /api/members と /api/events は JSON 本文をそのまま渡す', async () => {
+test('POST /api/events は JSON 本文をそのまま渡し、POST /api/members は無い', async () => {
   const { call, toolCalls } = await setup({ spyTools: true });
   const post = (body) => ({ method: 'POST', headers: { Authorization: 'Bearer ts_good', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  await call('/api/members', post({ name: '高橋' }));
+  assert.equal((await call('/api/members', post({ name: '高橋' }))).status, 404); // メンバー追加は AI からはできない
   const ev = { member: '佐藤', title: '定例', date: '2026-11-13', start: '10:00', end: '11:00' };
   await call('/api/events', post(ev));
-  assert.deepEqual(toolCalls, [['add_member', { name: '高橋' }], ['add_event', ev]]);
+  assert.deepEqual(toolCalls, [['add_event', ev]]);
 });
 
 test('POST /api/events の入力が不正なら 400', async () => {
@@ -202,4 +202,18 @@ test('GET /ai/<間違ったトークン> は 401、POST は 405', async () => {
   const { call } = await setup();
   assert.equal((await call('/ai/ts_bad')).status, 401);
   assert.equal((await call('/ai/ts_good', { method: 'POST' })).status, 405);
+});
+
+test('ツールにはトークン発行者のメールを渡す', async () => {
+  const good = await hashToken('ts_good');
+  let gotEmail;
+  const fetch = async (url) => {
+    const res = (status, json) => ({ ok: status < 300, status, json: async () => json });
+    if (url.includes(`/tokens/${good}`)) return res(200, doc(`tokens/${good}`, { team: s('T'), email: s('M@x.com') }));
+    if (url.includes('/teams/T')) return res(200, doc('teams/T', { allowed: { arrayValue: { values: [s('m@x.com')] } } }));
+    return res(404, {});
+  };
+  const h = createHandler({ fetch, tokenSource: { get: async () => 'AT' }, makeTools: (api, email) => { gotEmail = email; return { list_members: async () => 'x' }; } });
+  await h(new Request('https://w.dev/api/members', { headers: { Authorization: 'Bearer ts_good' } }), env);
+  assert.equal(gotEmail, 'm@x.com');
 });
