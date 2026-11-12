@@ -139,16 +139,20 @@
 <dialog id="connectDlg" class="wide">
   <form method="dialog" id="connectForm">
     <h2>AI・API と接続</h2>
-    <p class="meta">接続 URL を claude.ai の「設定 → コネクタ → カスタムコネクタを追加」に貼ると、どこからでも AI が予定を読み書きできます。</p>
+    <p class="meta">URL を発行すると、AI に予定を読ませたり、書き込ませたりできます。</p>
     <div class="row add-member">
       <input name="label" maxlength="40" placeholder="名前（例：claude.ai）" aria-label="接続の名前">
       <button value="issue" class="primary">URL を発行</button>
     </div>
     <div id="issued" class="issued" hidden>
       <p class="warn">この URL は今だけ表示されます。URL を知っている人は誰でも予定を読み書きできるので、人に渡さないでください。</p>
-      <label>MCP URL<span class="copy"><input id="mcpOut" readonly><button type="button" data-copy="mcpOut">コピー</button></span></label>
-      <label>Claude Code<span class="copy"><input id="ccOut" readonly><button type="button" data-copy="ccOut">コピー</button></span></label>
-      <label>REST API<span class="copy"><input id="curlOut" readonly><button type="button" data-copy="curlOut">コピー</button></span></label>
+      <label>① AI のチャットに貼る（読むだけ・いちばん簡単）<span class="copy"><textarea id="aiOut" rows="2" readonly></textarea><button type="button" data-copy="aiOut">コピー</button></span>
+        <small>コピーして、claude.ai や ChatGPT の会話にそのまま送ってください。</small></label>
+      <label>② claude.ai のコネクタに登録（読み書き）<span class="copy"><input id="mcpOut" readonly><button type="button" data-copy="mcpOut">コピー</button></span>
+        <small>claude.ai の「設定 → コネクタ → カスタムコネクタを追加」で、この URL を貼ります。チャット欄に貼っても動きません。</small></label>
+      <label>③ Claude Code<span class="copy"><input id="ccOut" readonly><button type="button" data-copy="ccOut">コピー</button></span>
+        <small>ターミナルで実行します。</small></label>
+      <label>④ 開発者向け REST API<span class="copy"><input id="curlOut" readonly><button type="button" data-copy="curlOut">コピー</button></span></label>
     </div>
     <p class="err" hidden></p>
     <h3>発行済み</h3>

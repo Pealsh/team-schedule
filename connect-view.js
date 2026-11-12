@@ -1,5 +1,5 @@
 // 「AI・API と接続」ダイアログ：接続 URL の発行・無効化と、オーナーによる許可リストの編集
-import { mcpUrl, curlExample, normalizeAllowed, inviteUrl } from './lib/connect.js';
+import { mcpUrl, curlExample, normalizeAllowed, inviteUrl, aiPrompt } from './lib/connect.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -36,6 +36,7 @@ async function submit(e) {
       const label = f.label.value.trim() || 'AI';
       const { token } = await ctx.api.createToken(label, ctx.email);
       const url = mcpUrl(ctx.workerUrl, token);
+      $('aiOut').value = aiPrompt(ctx.workerUrl, token);
       $('mcpOut').value = url;
       $('ccOut').value = `claude mcp add --transport http team-schedule ${url}`;
       $('curlOut').value = curlExample(ctx.workerUrl, token);

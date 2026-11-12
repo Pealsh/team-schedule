@@ -182,3 +182,24 @@ test('MCP の delete_event に ../../T を渡しても消さずに isError', asy
   assert.equal((await r.json()).result.isError, true);
   assert.ok(!calls.some((c) => c.method === 'DELETE'));
 });
+
+test('GET /ai/<トークン> は AI 向けのテキスト（メンバー・予定・空き時間）', async () => {
+  const { call } = await setup();
+  const r = await call('/ai/ts_good/');
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('Content-Type'), /text\/plain; charset=utf-8/);
+  assert.equal(r.headers.get('Cache-Control'), 'no-store');
+  assert.match(r.headers.get('X-Robots-Tag'), /noindex/);
+  const t = await r.text();
+  assert.match(t, /読み取り専用/);
+  assert.match(t, /## メンバー\n佐藤/);
+  assert.match(t, /## 予定（今日から 28 日間）/);
+  assert.match(t, /## 全員が空いている時間/);
+  assert.match(t, /\d{4}-\d{2}-\d{2}（.）: \d+:\d{2}–/);
+});
+
+test('GET /ai/<間違ったトークン> は 401、POST は 405', async () => {
+  const { call } = await setup();
+  assert.equal((await call('/ai/ts_bad')).status, 401);
+  assert.equal((await call('/ai/ts_good', { method: 'POST' })).status, 405);
+});

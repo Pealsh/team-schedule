@@ -59,6 +59,9 @@ npx wrangler deploy          # → https://team-schedule.<アカウント>.worke
 
 画面右上のアイコン → **AI・API と接続** → **URL を発行**。出てきた URL を使う（表示は 1 回だけ）。
 
+- **AI のチャットに貼る（読むだけ）**：①の文面をコピーして、claude.ai や ChatGPT の会話に送る。AI がリンク（`/ai/<トークン>`）を開き、メンバー・4 週間分の予定・全員の空き時間を読んで答える
+- 予定の追加・削除まで AI にさせたいときは、下のコネクタ登録（MCP）を使う。MCP URL はチャット欄に貼っても動かない
+
 - claude.ai / スマホの Claude：**設定 → コネクタ → カスタムコネクタを追加** に MCP URL を貼る
 - Claude Code：`claude mcp add --transport http team-schedule <MCP URL>`
 

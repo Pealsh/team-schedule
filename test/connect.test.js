@@ -30,3 +30,9 @@ test('inviteUrl: 今のページの URL にチームキーと招待コードを�
   const { inviteUrl } = await import('../lib/connect.js');
   assert.equal(inviteUrl('https://a.github.io/app/?x=1#k=old', 'T 1', 'C1'), 'https://a.github.io/app/?x=1#k=T%201&i=C1');
 });
+
+test('aiPrompt: AI チャットに貼る文面（読み取り用リンク付き）', async () => {
+  const { aiPrompt } = await import('../lib/connect.js');
+  assert.equal(aiPrompt('https://w.dev/', 'ts_a'),
+    '次のリンクを開いて、チームの予定を読んでから質問に答えてください。\nhttps://w.dev/ai/ts_a');
+});

@@ -4,6 +4,7 @@
 import { createApi, fromDoc } from '../lib/api.js';
 import { hashToken } from '../lib/token.js';
 import { withFixedOffset, fixedNow } from '../lib/fixed-offset.js';
+import { toDateStr } from '../lib/timeline.js';
 import { createTools } from '../mcp/tools.js';
 import { TOOL_DEFS, validateArgs } from '../mcp/schema.js';
 import { handleMcp } from './mcp.js';
@@ -105,6 +106,33 @@ export function createHandler({ fetch = globalThis.fetch, tokenSource, makeTools
     return r.json ? json(r.status, r.json) : new Response(null, { status: r.status });
   }
 
+  // AI のチャットに貼る読み取り専用ページ。AI はリンクを開くだけで予定を読める
+  async function aiPage(request, token, env) {
+    if (request.method !== 'GET' && request.method !== 'HEAD') return json(405, { error: 'method not allowed' }, { Allow: 'GET' });
+    const tools = await authorize(token, env);
+    if (!tools) return json(401, { error: 'invalid token' });
+    const [members, events, free] = await Promise.all([
+      tools.list_members({}),
+      tools.list_events({ days: 28 }),
+      tools.find_free_slots({ days: 14, min_minutes: 30, work_start: '09:00', work_end: '18:00' }),
+    ]);
+    const text = `# チーム予定（${toDateStr(fixedNow(JST)())} 時点・時刻は日本時間）
+このページは読み取り専用です。予定の追加・削除はできません。
+
+## メンバー
+${members}
+
+## 予定（今日から 28 日間）
+${events}
+
+## 全員が空いている時間（9:00〜18:00、30 分以上、今日から 14 日間）
+${free}
+`;
+    return new Response(text, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' },
+    });
+  }
+
   return async (request, env) => {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '');
@@ -115,6 +143,8 @@ export function createHandler({ fetch = globalThis.fetch, tokenSource, makeTools
         for (const [k, v] of Object.entries(CORS)) res.headers.set(k, v);
         return res;
       }
+      const ai = path.match(/^\/ai\/([^/]+)$/);
+      if (ai) return await aiPage(request, decodeURIComponent(ai[1]).trim(), env);
       const m = path.match(/^\/mcp\/([^/]+)$/);
       if (m) return await mcp(request, decodeURIComponent(m[1]).trim(), env);
       return json(404, { error: 'not found' });

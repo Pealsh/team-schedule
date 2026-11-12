@@ -193,6 +193,8 @@ dialog textarea {
 .copy { display: flex; gap: 8px; }
 .copy input { font: 13px var(--mono) !important; min-width: 0; }
 .copy button { flex: none; height: 40px; }
+.copy textarea { flex: 1; min-width: 0; height: 76px; overflow: auto; resize: none; font-size: 13px !important; line-height: 18px !important; }
+.issued small { font-size: 12px; line-height: 16px; color: var(--muted); }
 #tokenList small { flex: none; font-size: 12px; font-variant-numeric: tabular-nums; }
 
 /* ---------- 表示の切り替え（月表示の見た目は month.css） ---------- */
